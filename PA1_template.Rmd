@@ -4,22 +4,96 @@ output:
   html_document:
     keep_md: true
 ---
-
+```{r include=FALSE, cache=FALSE}
+require(ggplot2)
+```
 
 ## Loading and preprocessing the data
-
-
+```{r echo = TRUE} 
+step_data = read.csv("C:\\Users\\krodriguez\\Documents\\Coursera\\Reproducible Research\\Week 2\\RepData_PeerAssessment1\\activity\\activity.csv", stringsAsFactors = FALSE)
+```
 
 ## What is mean total number of steps taken per day?
+```{r echo = TRUE, comment=NA}
+omit_data = na.omit(step_data)
 
+omit_data_sum = aggregate(steps ~ date, omit_data, sum)
+omit_data_sum$date = as.Date(omit_data_sum$date)
+
+ggplot(omit_data_sum, aes(x=date, y=steps)) + geom_histogram(stat="identity") + scale_x_date(breaks = waiver()) + ggtitle("Total Number of Steps per Day")
+```
+
+####This is the average number of steps by day
+```{r echo =TRUE, comment=NA}
+print(aggregate(steps ~ date, omit_data, mean))
+```
+
+####This is the median number of steps by day
+```{r echo =TRUE, comment=NA}
+print(aggregate(steps ~ date, omit_data, median))
+```
 
 
 ## What is the average daily activity pattern?
+```{r echo = TRUE, comment=NA}
+omit_data_avg = aggregate(steps ~ interval, omit_data, mean)
 
+ggplot(omit_data_avg, aes(x=interval, y = steps)) + geom_line() + ggtitle("Time Series Plot of the 5 Minute Interval and the Average Number of Steps Taken")
+```
 
+####This is the highest 5-minute Interval that on Average Contains the Maximum Number of Steps 
+```{r echo =TRUE, comment=NA}
+max_interval =  omit_data_avg[which(omit_data_avg$steps == max(omit_data_avg$steps)),]
+print(max_interval$interval, row.names = FALSE)
+```
 
 ## Imputing missing values
+#### This is the Total Number of NA values in the data set
+```{r echo = TRUE, comment = NA}
+sum(is.na(step_data))
+```
 
+#### This is the New Dataset with NAs replaced with the Average of Steps for the Whole Data Set
+```{r echo = TRUE, comment = NA}
+step_data_filled = step_data
+step_data_filled$steps[is.na(step_data_filled$steps)] = mean(step_data_filled$steps, na.rm = TRUE)
+```
+#### This is the Total Number of Steps Taken by Day for the Dataset with NAs replaced 
+```{r echo = TRUE, comment = NA}
+data_sum= aggregate(steps ~ date, step_data_filled, sum)
+data_sum$date = as.Date(data_sum$date)
+
+ggplot(data_sum, aes(x=date, y=steps)) + geom_histogram(stat="identity") + scale_x_date(breaks = waiver()) + ggtitle("Total Number of Steps per Day for New Dataset")
+```
+
+#### This is the Mean of Total Number of Steps Taken Each Day for the New Dataset
+```{r echo = TRUE, comment = NA}
+aggregate(steps ~ date, step_data_filled, mean)
+```
+
+#### This is the Median of Total Number of Steps Taken Each Day for the New Dataset
+```{r echo = TRUE, comment = NA}
+aggregate(steps ~ date, step_data_filled, median)
+```
+After replacing NA values with the average of steps for the whole dataset, there is a slight effect on the estimates of the total number of steps taken per day.
+
+The most noticeable effect is on the median and average calculations for days with data containing a high number of NAs. More speficially, days 10-1, 10-8, 11-1, 11-4, 11-9, 11-10, 11-14, 11-30 all showed a sharp increase in median from 0 to 37.38. This is because the original dataset contained majority NAs for these specific days. This resulted in the replacement from NA to 37.38 for most entries in those days.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r echo = TRUE, comment = NA}
+step_data_filled$date = as.Date(step_data_filled$date)
+
+days = as.data.frame(weekdays(step_data_filled$date), stringsAsFactors = TRUE )
+colnames(days) = "day"
+
+step_data_filled = cbind(step_data_filled, days)
+
+weekend = c("Saturday", "Sunday")
+step_data_filled$weekday <- factor((step_data_filled$day %in% weekend), 
+         levels=c(TRUE, FALSE), labels=c('weekend', 'weekday')) 
+
+data_avg_weekend = aggregate(steps ~ interval * weekday, step_data_filled, mean)
+
+ggplot(data_avg_weekend, aes(x=interval, y = steps, group = weekday)) + geom_line() + ggtitle("Time Series Plot of the 5 Minute Interval and the Average Number of Steps Taken") + facet_wrap(~weekday , ncol = 1)
+```
